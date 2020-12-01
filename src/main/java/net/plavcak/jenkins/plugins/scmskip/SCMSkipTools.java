@@ -5,6 +5,7 @@ import hudson.model.*;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
@@ -85,9 +86,12 @@ public class SCMSkipTools {
             return false;
         }
 
+        boolean skip = true;
+
         ChangeLogSet<?> changeLogSet = changeLogSets.get(changeLogSets.size()-1);
 
         if (changeLogSet.isEmptySet()) {
+            skip = false;
             logEmptyChangeLog(logger);
         }
 
@@ -96,13 +100,14 @@ public class SCMSkipTools {
         for (Object entry : changeLogSet.getItems()) {
             if (entry instanceof ChangeLogSet.Entry && inspectChangeSetEntry((Entry) entry, matcher)) {
                 matchedEntry = (Entry) entry;
-                break;
+            } else {
+                skip = false;
             }
         }
 
         String commitMessage  = combineChangeLogMessages(changeLogSet);
 
-        if (matchedEntry == null) {
+        if (matchedEntry == null || !skip) {
             logger.println("SCM Skip: Pattern "
                     + matcher.getPattern().pattern()
                     + " NOT matched on message: "
@@ -126,7 +131,7 @@ public class SCMSkipTools {
             }
         }
 
-        return matchedEntry != null;
+        return skip;
     }
 
     public static void stopBuild(Run<?, ?> run) throws AbortException, IOException, ServletException {
